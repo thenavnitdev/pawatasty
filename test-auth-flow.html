@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentication Flow Test - Pawa</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f3f4f6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #1f2937;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #6b7280;
+            margin-bottom: 30px;
+        }
+
+        .test-section {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .test-section h2 {
+            color: #374151;
+            font-size: 18px;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .test-item {
+            margin-bottom: 12px;
+            padding: 12px;
+            border-radius: 8px;
+            background: #f9fafb;
+        }
+
+        .test-item.pass {
+            background: #d1fae5;
+            border-left: 4px solid #10b981;
+        }
+
+        .test-item.fail {
+            background: #fee2e2;
+            border-left: 4px solid #ef4444;
+        }
+
+        .test-item.pending {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+        }
+
+        .test-name {
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 4px;
+        }
+
+        .test-result {
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        button {
+            background: #334155;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-right: 8px;
+            margin-bottom: 8px;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #1e293b;
+        }
+
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        button.danger {
+            background: #ef4444;
+        }
+
+        button.danger:hover {
+            background: #dc2626;
+        }
+
+        .input-group {
+            margin-bottom: 12px;
+        }
+
+        .input-group label {
+            display: block;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .status {
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-weight: 500;
+        }
+
+        .status.info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .log {
+            background: #1f2937;
+            color: #f3f4f6;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 12px;
+        }
+
+        .log-entry {
+            margin-bottom: 4px;
+            padding: 4px;
+        }
+
+        .log-entry.error {
+            color: #fca5a5;
+        }
+
+        .log-entry.success {
+            color: #86efac;
+        }
+
+        .log-entry.info {
+            color: #93c5fd;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Authentication Flow Test Suite</h1>
+        <p class="subtitle">Comprehensive testing for login, signup, logout, and profile completion redirects</p>
+
+        <div class="test-section">
+            <h2>Current Authentication Status</h2>
+            <div id="authStatus" class="status info">Checking authentication...</div>
+            <button onclick="checkAuthStatus()">Refresh Status</button>
+            <button onclick="clearAllStorage()" class="danger">Clear All Storage</button>
+        </div>
+
+        <div class="test-section">
+            <h2>Test 1: Sign Up New User</h2>
+            <div class="input-group">
+                <label>Email:</label>
+                <input type="email" id="signupEmail" placeholder="newuser@example.com">
+            </div>
+            <div class="input-group">
+                <label>Password:</label>
+                <input type="password" id="signupPassword" placeholder="Min 6 characters">
+            </div>
+            <button onclick="testSignup()">Run Sign Up Test</button>
+            <div id="signupResult" class="test-item pending">
+                <div class="test-name">Sign Up & Profile Completion Redirect</div>
+                <div class="test-result">Test not run yet</div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>Test 2: Login Existing User</h2>
+            <div class="input-group">
+                <label>Email:</label>
+                <input type="email" id="loginEmail" placeholder="existing@example.com">
+            </div>
+            <div class="input-group">
+                <label>Password:</label>
+                <input type="password" id="loginPassword" placeholder="Your password">
+            </div>
+            <button onclick="testLogin()">Run Login Test</button>
+            <div id="loginResult" class="test-item pending">
+                <div class="test-name">Login Redirect</div>
+                <div class="test-result">Test not run yet</div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>Test 3: Logout & Redirect</h2>
+            <button onclick="testLogout()">Run Logout Test</button>
+            <div id="logoutResult" class="test-item pending">
+                <div class="test-name">Logout & Login Page Redirect</div>
+                <div class="test-result">Test not run yet</div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>Test 4: Unauthenticated Access</h2>
+            <button onclick="testUnauthenticatedAccess()">Run Test</button>
+            <div id="unauthResult" class="test-item pending">
+                <div class="test-name">Redirect to Login When Not Authenticated</div>
+                <div class="test-result">Test not run yet</div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>Activity Log</h2>
+            <button onclick="clearLog()">Clear Log</button>
+            <div id="log" class="log"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
+
+        const supabase = createClient(
+            'https://dopjawhuylqipltnuydp.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRvcGphd2h1eWxxaXBsdG51eWRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA2NDA0NTksImV4cCI6MjA3NjIxNjQ1OX0.l_xbP6PPkTsq82CnFQ6caHFWyKf1fwkvYqBmzpp03Co'
+        );
+
+        window.supabase = supabase;
+
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            const timestamp = new Date().toLocaleTimeString();
+            entry.textContent = `[${timestamp}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        window.clearLog = function() {
+            document.getElementById('log').innerHTML = '';
+        };
+
+        window.clearAllStorage = function() {
+            localStorage.clear();
+            sessionStorage.clear();
+            log('All storage cleared', 'info');
+            checkAuthStatus();
+        };
+
+        window.checkAuthStatus = async function() {
+            const statusDiv = document.getElementById('authStatus');
+
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+
+                const apiToken = localStorage.getItem('api_token');
+                const supabaseToken = localStorage.getItem('supabase_token');
+                const supabaseUser = localStorage.getItem('supabase_user');
+
+                if (session || apiToken || supabaseToken) {
+                    const userEmail = session?.user?.email || 'Unknown';
+                    statusDiv.className = 'status success';
+                    statusDiv.innerHTML = `
+                        ✓ <strong>Authenticated</strong><br>
+                        User: ${userEmail}<br>
+                        Session: ${session ? 'Active' : 'None'}<br>
+                        API Token: ${apiToken ? 'Present' : 'None'}<br>
+                        Supabase Token: ${supabaseToken ? 'Present' : 'None'}
+                    `;
+                    log('User is authenticated', 'success');
+                } else {
+                    statusDiv.className = 'status error';
+                    statusDiv.innerHTML = '✗ <strong>Not Authenticated</strong><br>No active session found';
+                    log('No authentication found', 'error');
+                }
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.innerHTML = `✗ <strong>Error checking status:</strong> ${error.message}`;
+                log(`Error checking auth: ${error.message}`, 'error');
+            }
+        };
+
+        window.testSignup = async function() {
+            const email = document.getElementById('signupEmail').value;
+            const password = document.getElementById('signupPassword').value;
+            const resultDiv = document.getElementById('signupResult');
+
+            if (!email || !password) {
+                alert('Please enter email and password');
+                return;
+            }
+
+            log(`Starting signup test for: ${email}`, 'info');
+            resultDiv.className = 'test-item pending';
+            resultDiv.innerHTML = '<div class="test-name">Sign Up & Profile Completion Redirect</div><div class="test-result">Testing...</div>';
+
+            try {
+                const { data, error } = await supabase.auth.signUp({
+                    email,
+                    password,
+                    options: {
+                        emailRedirectTo: window.location.origin,
+                    }
+                });
+
+                if (error) throw error;
+
+                if (data.user) {
+                    localStorage.setItem('supabase_user', JSON.stringify(data.user));
+                    if (data.session) {
+                        localStorage.setItem('supabase_token', data.session.access_token);
+                    }
+
+                    // Check if profile exists
+                    const { data: profile } = await supabase
+                        .from('users')
+                        .select('full_name, phone_nr, profile_completed')
+                        .eq('user_id', data.user.id)
+                        .maybeSingle();
+
+                    if (!profile || !profile.full_name || !profile.profile_completed) {
+                        resultDiv.className = 'test-item pass';
+                        resultDiv.innerHTML = `
+                            <div class="test-name">✓ Sign Up & Profile Completion Redirect</div>
+                            <div class="test-result">
+                                SUCCESS: User created, should redirect to Profile Completion page<br>
+                                User ID: ${data.user.id}<br>
+                                Profile Status: Incomplete
+                            </div>
+                        `;
+                        log('Signup successful - user needs profile completion', 'success');
+                    } else {
+                        resultDiv.className = 'test-item pass';
+                        resultDiv.innerHTML = `
+                            <div class="test-name">✓ Sign Up Complete</div>
+                            <div class="test-result">
+                                SUCCESS: User created with complete profile, should redirect to map<br>
+                                User ID: ${data.user.id}
+                            </div>
+                        `;
+                        log('Signup successful - profile complete', 'success');
+                    }
+
+                    await checkAuthStatus();
+                }
+            } catch (error) {
+                resultDiv.className = 'test-item fail';
+                resultDiv.innerHTML = `
+                    <div class="test-name">✗ Sign Up Failed</div>
+                    <div class="test-result">ERROR: ${error.message}</div>
+                `;
+                log(`Signup failed: ${error.message}`, 'error');
+            }
+        };
+
+        window.testLogin = async function() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const resultDiv = document.getElementById('loginResult');
+
+            if (!email || !password) {
+                alert('Please enter email and password');
+                return;
+            }
+
+            log(`Starting login test for: ${email}`, 'info');
+            resultDiv.className = 'test-item pending';
+            resultDiv.innerHTML = '<div class="test-name">Login Redirect</div><div class="test-result">Testing...</div>';
+
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email,
+                    password,
+                });
+
+                if (error) throw error;
+
+                if (data.user && data.session) {
+                    localStorage.setItem('supabase_user', JSON.stringify(data.user));
+                    localStorage.setItem('supabase_token', data.session.access_token);
+
+                    // Check profile completion
+                    const { data: profile } = await supabase
+                        .from('users')
+                        .select('full_name, phone_nr, profile_completed')
+                        .eq('user_id', data.user.id)
+                        .maybeSingle();
+
+                    if (!profile || !profile.full_name || !profile.profile_completed) {
+                        resultDiv.className = 'test-item pass';
+                        resultDiv.innerHTML = `
+                            <div class="test-name">✓ Login Success - Profile Incomplete</div>
+                            <div class="test-result">
+                                SUCCESS: Should redirect to Profile Completion page<br>
+                                User: ${email}
+                            </div>
+                        `;
+                        log('Login successful - needs profile completion', 'success');
+                    } else {
+                        resultDiv.className = 'test-item pass';
+                        resultDiv.innerHTML = `
+                            <div class="test-name">✓ Login Success - Profile Complete</div>
+                            <div class="test-result">
+                                SUCCESS: Should redirect to map view<br>
+                                User: ${email}
+                            </div>
+                        `;
+                        log('Login successful - profile complete', 'success');
+                    }
+
+                    await checkAuthStatus();
+                }
+            } catch (error) {
+                resultDiv.className = 'test-item fail';
+                resultDiv.innerHTML = `
+                    <div class="test-name">✗ Login Failed</div>
+                    <div class="test-result">ERROR: ${error.message}</div>
+                `;
+                log(`Login failed: ${error.message}`, 'error');
+            }
+        };
+
+        window.testLogout = async function() {
+            const resultDiv = document.getElementById('logoutResult');
+
+            log('Starting logout test', 'info');
+            resultDiv.className = 'test-item pending';
+            resultDiv.innerHTML = '<div class="test-name">Logout & Login Page Redirect</div><div class="test-result">Testing...</div>';
+
+            try {
+                await supabase.auth.signOut();
+
+                localStorage.removeItem('api_token');
+                localStorage.removeItem('user_data');
+                localStorage.removeItem('supabase_token');
+                localStorage.removeItem('supabase_user');
+
+                resultDiv.className = 'test-item pass';
+                resultDiv.innerHTML = `
+                    <div class="test-name">✓ Logout Successful</div>
+                    <div class="test-result">
+                        SUCCESS: User logged out, all tokens cleared<br>
+                        Should redirect to login page
+                    </div>
+                `;
+                log('Logout successful - cleared all storage', 'success');
+
+                await checkAuthStatus();
+            } catch (error) {
+                resultDiv.className = 'test-item fail';
+                resultDiv.innerHTML = `
+                    <div class="test-name">✗ Logout Failed</div>
+                    <div class="test-result">ERROR: ${error.message}</div>
+                `;
+                log(`Logout failed: ${error.message}`, 'error');
+            }
+        };
+
+        window.testUnauthenticatedAccess = async function() {
+            const resultDiv = document.getElementById('unauthResult');
+
+            log('Testing unauthenticated access', 'info');
+            resultDiv.className = 'test-item pending';
+            resultDiv.innerHTML = '<div class="test-name">Redirect to Login When Not Authenticated</div><div class="test-result">Testing...</div>';
+
+            try {
+                // Clear all auth
+                await supabase.auth.signOut();
+                localStorage.clear();
+
+                const { data: { session } } = await supabase.auth.getSession();
+
+                if (!session) {
+                    resultDiv.className = 'test-item pass';
+                    resultDiv.innerHTML = `
+                        <div class="test-name">✓ Unauthenticated Access Blocked</div>
+                        <div class="test-result">
+                            SUCCESS: No session found<br>
+                            App should redirect to login page
+                        </div>
+                    `;
+                    log('No session - should redirect to login', 'success');
+                } else {
+                    resultDiv.className = 'test-item fail';
+                    resultDiv.innerHTML = `
+                        <div class="test-name">✗ Session Still Active</div>
+                        <div class="test-result">ERROR: Session was not cleared properly</div>
+                    `;
+                    log('Session still active after logout', 'error');
+                }
+
+                await checkAuthStatus();
+            } catch (error) {
+                resultDiv.className = 'test-item fail';
+                resultDiv.innerHTML = `
+                    <div class="test-name">✗ Test Failed</div>
+                    <div class="test-result">ERROR: ${error.message}</div>
+                `;
+                log(`Test failed: ${error.message}`, 'error');
+            }
+        };
+
+        // Initialize
+        checkAuthStatus();
+        log('Test suite initialized', 'info');
+    </script>
+</body>
+</html>

@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Direct Stripe Test - No React</title>
+  <script src="https://js.stripe.com/v3/"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      max-width: 500px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f9fafb;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    h1 {
+      margin-top: 0;
+      color: #1f2937;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: #374151;
+      font-size: 14px;
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 12px;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+    #card-element {
+      padding: 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 12px;
+      background: white;
+      min-height: 44px;
+    }
+    #card-element.focused {
+      border-color: #64748b;
+      box-shadow: 0 0 0 2px rgba(100, 116, 139, 0.1);
+    }
+    #card-errors {
+      color: #ef4444;
+      margin-top: 8px;
+      font-size: 14px;
+    }
+    button {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(to right, #fb923c, #f97316);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    button:hover {
+      transform: translateY(-1px);
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .status {
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+    .status.success {
+      background: #d1fae5;
+      color: #065f46;
+      border: 1px solid #10b981;
+    }
+    .status.error {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #ef4444;
+    }
+    .status.info {
+      background: #dbeafe;
+      color: #1e40af;
+      border: 1px solid #3b82f6;
+    }
+    .hint {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 8px;
+    }
+    .console-log {
+      background: #1f2937;
+      color: #10b981;
+      padding: 15px;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      max-height: 200px;
+      overflow-y: auto;
+      margin-top: 20px;
+    }
+    .console-log div {
+      margin: 4px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 Direct Stripe Test</h1>
+    <p style="color: #6b7280; margin-bottom: 20px;">Testing Stripe without React to isolate any issues</p>
+
+    <div id="status"></div>
+    <div id="console" class="console-log"></div>
+
+    <form id="payment-form" style="margin-top: 20px;">
+      <div class="form-group">
+        <label for="cardholder-name">Cardholder Name</label>
+        <input
+          type="text"
+          id="cardholder-name"
+          placeholder="John Doe"
+          required
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="card-element">Card Details</label>
+        <div id="card-element"></div>
+        <div id="card-errors" role="alert"></div>
+        <p class="hint">Test card: 4242 4242 4242 4242 | Exp: 12/25 | CVC: 123</p>
+      </div>
+
+      <button type="submit" id="submit-button">Test Card Input</button>
+    </form>
+  </div>
+
+  <script>
+    // Logger
+    const consoleDiv = document.getElementById('console');
+    const statusDiv = document.getElementById('status');
+
+    function log(message, type = 'info') {
+      console.log(message);
+      const div = document.createElement('div');
+      div.textContent = `${new Date().toLocaleTimeString()} - ${message}`;
+      consoleDiv.appendChild(div);
+      consoleDiv.scrollTop = consoleDiv.scrollHeight;
+    }
+
+    function setStatus(message, type = 'info') {
+      statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+    }
+
+    // Stripe Configuration
+    const STRIPE_KEY = 'pk_test_51M2D1ECcTUIOQ9MlHx82jO3oGqleOMKvBub1sYxHYTODiKzxwwAWb3hUiqgvHXCf92WXbklGIYgjLtpvh5DiQ9ll00eCtUxgsy';
+
+    log('🔑 Using Stripe Key: ' + STRIPE_KEY.substring(0, 20) + '...');
+
+    // Check if Stripe is loaded
+    if (typeof Stripe === 'undefined') {
+      log('❌ ERROR: Stripe.js not loaded!');
+      setStatus('❌ Stripe.js failed to load. Check your network.', 'error');
+    } else {
+      log('✅ Stripe.js script loaded');
+    }
+
+    // Initialize Stripe
+    let stripe;
+    try {
+      stripe = Stripe(STRIPE_KEY);
+      log('✅ Stripe initialized successfully');
+      setStatus('✅ Stripe loaded! Initializing card element...', 'success');
+    } catch (error) {
+      log('❌ Error initializing Stripe: ' + error.message);
+      setStatus('❌ Error: ' + error.message, 'error');
+    }
+
+    if (!stripe) {
+      log('❌ CRITICAL: Stripe instance is null');
+      setStatus('❌ Failed to create Stripe instance', 'error');
+    } else {
+      // Create Elements
+      const elements = stripe.elements();
+      log('✅ Elements created');
+
+      // Create Card Element
+      const cardElement = elements.create('card', {
+        style: {
+          base: {
+            fontSize: '16px',
+            color: '#1f2937',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+            lineHeight: '24px',
+            '::placeholder': {
+              color: '#9ca3af',
+            },
+          },
+          invalid: {
+            color: '#ef4444',
+            iconColor: '#ef4444',
+          },
+        },
+        hidePostalCode: false,
+      });
+
+      log('✅ Card Element created');
+
+      // Mount Card Element
+      try {
+        cardElement.mount('#card-element');
+        log('✅ Card Element mounted successfully');
+        setStatus('✅ Ready! Try entering card details.', 'success');
+      } catch (error) {
+        log('❌ Error mounting Card Element: ' + error.message);
+        setStatus('❌ Failed to mount: ' + error.message, 'error');
+      }
+
+      // Event Listeners
+      cardElement.on('ready', () => {
+        log('✅ Card Element iframe ready');
+      });
+
+      cardElement.on('focus', () => {
+        log('📌 Card Element focused');
+        document.getElementById('card-element').classList.add('focused');
+      });
+
+      cardElement.on('blur', () => {
+        log('📍 Card Element blurred');
+        document.getElementById('card-element').classList.remove('focused');
+      });
+
+      cardElement.on('change', (event) => {
+        const displayError = document.getElementById('card-errors');
+        if (event.error) {
+          displayError.textContent = event.error.message;
+          log('❌ Validation error: ' + event.error.message);
+        } else {
+          displayError.textContent = '';
+        }
+
+        if (event.complete) {
+          log('✅ Card details complete and valid');
+        } else {
+          log('⏳ Card details incomplete');
+        }
+
+        if (event.brand) {
+          log('💳 Card brand: ' + event.brand);
+        }
+      });
+
+      // Form Submission
+      const form = document.getElementById('payment-form');
+      const submitButton = document.getElementById('submit-button');
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        log('🚀 Form submitted, creating payment method...');
+
+        submitButton.disabled = true;
+        submitButton.textContent = 'Processing...';
+
+        const cardholderName = document.getElementById('cardholder-name').value;
+
+        try {
+          const { error, paymentMethod } = await stripe.createPaymentMethod({
+            type: 'card',
+            card: cardElement,
+            billing_details: {
+              name: cardholderName,
+            },
+          });
+
+          if (error) {
+            throw new Error(error.message);
+          }
+
+          log('✅ SUCCESS! Payment Method created: ' + paymentMethod.id);
+          log('💳 Card: ' + paymentMethod.card.brand + ' •••• ' + paymentMethod.card.last4);
+          log('📅 Expiry: ' + paymentMethod.card.exp_month + '/' + paymentMethod.card.exp_year);
+
+          setStatus(`
+            <strong>✅ Success!</strong><br>
+            Payment Method ID: ${paymentMethod.id}<br>
+            Card: ${paymentMethod.card.brand} •••• ${paymentMethod.card.last4}<br>
+            Expiry: ${paymentMethod.card.exp_month}/${paymentMethod.card.exp_year}
+          `, 'success');
+
+          form.reset();
+          cardElement.clear();
+
+        } catch (error) {
+          log('❌ ERROR: ' + error.message);
+          setStatus('❌ Error: ' + error.message, 'error');
+        } finally {
+          submitButton.disabled = false;
+          submitButton.textContent = 'Test Card Input';
+        }
+      });
+    }
+
+    // Test network connectivity
+    log('🌐 Testing Stripe API connectivity...');
+    fetch('https://js.stripe.com/v3/')
+      .then(response => {
+        if (response.ok) {
+          log('✅ Stripe CDN is accessible');
+        } else {
+          log('⚠️  Stripe CDN returned status: ' + response.status);
+        }
+      })
+      .catch(error => {
+        log('❌ Cannot reach Stripe CDN: ' + error.message);
+      });
+  </script>
+</body>
+</html>

@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Facebook OAuth Test</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+    }
+    .section {
+      margin: 20px 0;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+    }
+    button {
+      padding: 12px 24px;
+      margin: 5px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+      background: #fff;
+    }
+    button:hover {
+      background: #f0f0f0;
+    }
+    .error {
+      color: red;
+      padding: 10px;
+      background: #ffe6e6;
+      border-radius: 4px;
+      margin: 10px 0;
+    }
+    .success {
+      color: green;
+      padding: 10px;
+      background: #e6ffe6;
+      border-radius: 4px;
+      margin: 10px 0;
+    }
+    .info {
+      color: blue;
+      padding: 10px;
+      background: #e6f3ff;
+      border-radius: 4px;
+      margin: 10px 0;
+    }
+    pre {
+      background: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>Facebook OAuth Diagnostic Tool</h1>
+
+  <div class="section">
+    <h2>Configuration</h2>
+    <div id="config"></div>
+  </div>
+
+  <div class="section">
+    <h2>Test Facebook Login</h2>
+    <button onclick="testFacebookLogin()">Test Facebook OAuth</button>
+    <button onclick="testGoogleLogin()">Test Google OAuth (for comparison)</button>
+    <button onclick="checkSession()">Check Current Session</button>
+    <button onclick="clearStorage()">Clear Storage</button>
+  </div>
+
+  <div class="section">
+    <h2>Results</h2>
+    <div id="results"></div>
+  </div>
+
+  <div class="section">
+    <h2>Console Logs</h2>
+    <div id="logs"></div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://dopjawhuylqipltnuydp.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRvcGphd2h1eWxxaXBsdG51eWRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA2NDA0NTksImV4cCI6MjA3NjIxNjQ1OX0.l_xbP6PPkTsq82CnFQ6caHFWyKf1fwkvYqBmzpp03Co';
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        flowType: 'pkce',
+        debug: true,
+      }
+    });
+
+    function log(message, type = 'info') {
+      const logsDiv = document.getElementById('logs');
+      const timestamp = new Date().toLocaleTimeString();
+      const colorClass = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
+      logsDiv.innerHTML += `<div class="${colorClass}">[${timestamp}] ${message}</div>`;
+      console.log(message);
+    }
+
+    function showResult(title, data) {
+      const resultsDiv = document.getElementById('results');
+      resultsDiv.innerHTML += `<div><strong>${title}:</strong><pre>${JSON.stringify(data, null, 2)}</pre></div>`;
+    }
+
+    // Show configuration
+    document.getElementById('config').innerHTML = `
+      <div><strong>Supabase URL:</strong> ${SUPABASE_URL}</div>
+      <div><strong>Current URL:</strong> ${window.location.href}</div>
+      <div><strong>Origin:</strong> ${window.location.origin}</div>
+      <div><strong>Redirect URL for OAuth:</strong> ${window.location.origin}</div>
+    `;
+
+    async function testFacebookLogin() {
+      log('🔵 Testing Facebook OAuth...', 'info');
+      document.getElementById('results').innerHTML = '';
+
+      try {
+        log('Step 1: Calling signInWithOAuth with Facebook provider');
+
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: 'facebook',
+          options: {
+            redirectTo: window.location.origin,
+            skipBrowserRedirect: false,
+            scopes: 'email,public_profile',
+          }
+        });
+
+        if (error) {
+          log(`❌ Facebook OAuth Error: ${error.message}`, 'error');
+          showResult('Error Details', error);
+
+          // Check for specific error messages
+          if (error.message.includes('not enabled') || error.message.includes('not configured')) {
+            log('⚠️ Facebook provider is NOT enabled in Supabase dashboard!', 'error');
+            log('Fix: Go to Supabase Dashboard → Authentication → Providers → Enable Facebook', 'info');
+          } else if (error.message.includes('redirect')) {
+            log('⚠️ Redirect URL mismatch!', 'error');
+            log(`Expected: ${window.location.origin}`, 'info');
+          }
+        } else {
+          log('✅ Facebook OAuth initiated successfully!', 'success');
+          showResult('OAuth Data', data);
+          log(`Redirecting to: ${data.url}`, 'info');
+        }
+      } catch (err) {
+        log(`❌ Exception: ${err.message}`, 'error');
+        showResult('Exception', err);
+      }
+    }
+
+    async function testGoogleLogin() {
+      log('🔵 Testing Google OAuth (for comparison)...', 'info');
+      document.getElementById('results').innerHTML = '';
+
+      try {
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: window.location.origin,
+            skipBrowserRedirect: false,
+            queryParams: {
+              access_type: 'offline',
+              prompt: 'consent',
+            },
+          }
+        });
+
+        if (error) {
+          log(`❌ Google OAuth Error: ${error.message}`, 'error');
+          showResult('Error Details', error);
+        } else {
+          log('✅ Google OAuth initiated successfully!', 'success');
+          showResult('OAuth Data', data);
+        }
+      } catch (err) {
+        log(`❌ Exception: ${err.message}`, 'error');
+      }
+    }
+
+    async function checkSession() {
+      log('🔵 Checking current session...', 'info');
+      document.getElementById('results').innerHTML = '';
+
+      try {
+        const { data, error } = await supabase.auth.getSession();
+
+        if (error) {
+          log(`❌ Session Error: ${error.message}`, 'error');
+          showResult('Error', error);
+        } else if (data.session) {
+          log('✅ Active session found!', 'success');
+          showResult('Session', data.session);
+          showResult('User', data.session.user);
+        } else {
+          log('ℹ️ No active session', 'info');
+          showResult('Session', 'null');
+        }
+      } catch (err) {
+        log(`❌ Exception: ${err.message}`, 'error');
+      }
+    }
+
+    function clearStorage() {
+      localStorage.clear();
+      sessionStorage.clear();
+      log('✅ Storage cleared', 'success');
+      document.getElementById('results').innerHTML = '';
+      document.getElementById('logs').innerHTML = '';
+    }
+
+    // Check for OAuth callback on page load
+    window.addEventListener('load', async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+
+      if (hashParams.has('access_token') || hashParams.has('error') || urlParams.has('code')) {
+        log('🔵 OAuth callback detected!', 'info');
+
+        if (hashParams.has('error')) {
+          log(`❌ OAuth Error: ${hashParams.get('error_description') || hashParams.get('error')}`, 'error');
+        } else {
+          log('✅ OAuth successful, checking session...', 'success');
+          setTimeout(checkSession, 1000);
+        }
+      }
+    });
+
+    // Listen for auth state changes
+    supabase.auth.onAuthStateChange((event, session) => {
+      log(`🔔 Auth state changed: ${event}`, 'info');
+      if (session) {
+        log(`✅ User authenticated: ${session.user.email || session.user.id}`, 'success');
+        showResult('Auth Event', { event, user: session.user });
+      }
+    });
+  </script>
+</body>
+</html>

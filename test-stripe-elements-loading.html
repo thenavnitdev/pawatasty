@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Stripe Elements Loading</title>
+  <script src="https://js.stripe.com/v3/"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: #374151;
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+    #card-element {
+      padding: 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      background: white;
+      min-height: 44px;
+    }
+    #card-errors {
+      color: #ef4444;
+      margin-top: 8px;
+      font-size: 14px;
+    }
+    button {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(to right, #fb923c, #f97316);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .status {
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .status.success {
+      background: #d1fae5;
+      color: #065f46;
+    }
+    .status.error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    .hint {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Stripe Elements Test</h1>
+
+  <div id="status"></div>
+
+  <form id="payment-form">
+    <div class="form-group">
+      <label for="cardholder-name">Cardholder Name</label>
+      <input
+        type="text"
+        id="cardholder-name"
+        placeholder="John Doe"
+        required
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="card-element">Card Details</label>
+      <div id="card-element"></div>
+      <div id="card-errors" role="alert"></div>
+      <p class="hint">Test card: 4242 4242 4242 4242 | Any future date | Any CVC</p>
+    </div>
+
+    <button type="submit" id="submit-button">Add Card</button>
+  </form>
+
+  <script>
+    // Replace with your Stripe publishable key
+    const STRIPE_KEY = 'pk_test_51M2D1ECcTUIOQ9MlHx82jO3oGqleOMKvBub1sYxHYTODiKzxwwAWb3hUiqgvHXCf92WXbklGIYgjLtpvh5DiQ9ll00eCtUxgsy';
+
+    console.log('🔑 Stripe Key:', STRIPE_KEY.substring(0, 20) + '...');
+
+    // Initialize Stripe
+    const stripe = Stripe(STRIPE_KEY);
+    console.log('✅ Stripe initialized:', stripe);
+
+    // Create Elements
+    const elements = stripe.elements();
+    console.log('✅ Elements created:', elements);
+
+    // Create Card Element with styling
+    const cardElement = elements.create('card', {
+      style: {
+        base: {
+          fontSize: '16px',
+          color: '#1f2937',
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+          lineHeight: '24px',
+          '::placeholder': {
+            color: '#9ca3af',
+          },
+        },
+        invalid: {
+          color: '#ef4444',
+          iconColor: '#ef4444',
+        },
+      },
+      hidePostalCode: false,
+    });
+
+    // Mount Card Element
+    cardElement.mount('#card-element');
+    console.log('✅ Card Element mounted');
+
+    const statusDiv = document.getElementById('status');
+
+    statusDiv.innerHTML = '<div class="status success">✅ Stripe Elements loaded successfully! You can now enter card details.</div>';
+
+    // Handle card errors
+    cardElement.on('change', (event) => {
+      const displayError = document.getElementById('card-errors');
+      if (event.error) {
+        displayError.textContent = event.error.message;
+      } else {
+        displayError.textContent = '';
+      }
+      console.log('Card element changed:', event);
+    });
+
+    // Handle form submission
+    const form = document.getElementById('payment-form');
+    const submitButton = document.getElementById('submit-button');
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      submitButton.disabled = true;
+      submitButton.textContent = 'Processing...';
+
+      const cardholderName = document.getElementById('cardholder-name').value;
+
+      try {
+        const { error, paymentMethod } = await stripe.createPaymentMethod({
+          type: 'card',
+          card: cardElement,
+          billing_details: {
+            name: cardholderName,
+          },
+        });
+
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        console.log('✅ Payment Method created:', paymentMethod);
+
+        statusDiv.innerHTML = `
+          <div class="status success">
+            <strong>✅ Success!</strong><br>
+            Payment Method ID: ${paymentMethod.id}<br>
+            Card: ${paymentMethod.card.brand} •••• ${paymentMethod.card.last4}<br>
+            Expiry: ${paymentMethod.card.exp_month}/${paymentMethod.card.exp_year}
+          </div>
+        `;
+
+        form.reset();
+        cardElement.clear();
+
+      } catch (error) {
+        console.error('❌ Error:', error);
+        statusDiv.innerHTML = `
+          <div class="status error">
+            <strong>❌ Error:</strong><br>
+            ${error.message}
+          </div>
+        `;
+      } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Add Card';
+      }
+    });
+
+    // Test Stripe is working
+    console.log('🧪 Testing Stripe API...');
+    stripe.createToken(cardElement).then((result) => {
+      console.log('Test result:', result);
+    });
+  </script>
+</body>
+</html>

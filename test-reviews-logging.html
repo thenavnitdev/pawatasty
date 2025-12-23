@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reviews API Test</title>
+</head>
+<body>
+  <h1>Testing Reviews API</h1>
+  <div id="output"></div>
+
+  <script type="module">
+    const SUPABASE_URL = 'https://dopjawhuylqipltnuydp.supabase.co';
+    const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRvcGphd2h1eWxxaXBsdG51eWRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzEzNzEwNTAsImV4cCI6MjA0Njk0NzA1MH0.0E5bGWKvF9Q7WkCJZmBfNt-qxcNmvQEU3RoDxrZ05c0';
+
+    async function testReviews() {
+      console.log('🧪 Testing Reviews for Newiono (MC700263)');
+
+      const url = `${SUPABASE_URL}/functions/v1/reviews/merchant/MC700263`;
+      console.log('📡 URL:', url);
+
+      try {
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': ANON_KEY,
+          },
+        });
+
+        console.log('📥 Response status:', response.status);
+
+        const data = await response.json();
+        console.log('✅ Response data:', data);
+        console.log('📊 Review count:', data.length);
+        console.log('📊 Is Array?', Array.isArray(data));
+
+        document.getElementById('output').innerHTML = `
+          <h2>Success!</h2>
+          <p>Reviews fetched: ${data.length}</p>
+          <pre>${JSON.stringify(data, null, 2)}</pre>
+        `;
+      } catch (error) {
+        console.error('❌ Error:', error);
+        document.getElementById('output').innerHTML = `
+          <h2>Error!</h2>
+          <pre>${error.message}</pre>
+        `;
+      }
+    }
+
+    testReviews();
+  </script>
+</body>
+</html>

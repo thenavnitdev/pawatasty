@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Authentication Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+    }
+    .test-section {
+      margin: 20px 0;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    .result {
+      margin-top: 10px;
+      padding: 10px;
+      background: #f8f9fa;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .success {
+      border-left: 4px solid #28a745;
+    }
+    .error {
+      border-left: 4px solid #dc3545;
+    }
+    input {
+      padding: 8px;
+      margin: 5px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      width: 300px;
+    }
+    .status {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .status.success {
+      background: #28a745;
+      color: white;
+    }
+    .status.error {
+      background: #dc3545;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <h1>PawaTasty API Authentication Test</h1>
+
+  <div class="test-section">
+    <h2>1. Register New User</h2>
+    <input type="email" id="regEmail" placeholder="Email" value="testuser@example.com">
+    <input type="password" id="regPassword" placeholder="Password" value="testpass123">
+    <input type="text" id="regName" placeholder="Full Name (optional)" value="Test User">
+    <br>
+    <button onclick="testRegister()">Register</button>
+    <div id="regResult" class="result" style="display:none;"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>2. Login</h2>
+    <input type="email" id="loginEmail" placeholder="Email" value="testuser@example.com">
+    <input type="password" id="loginPassword" placeholder="Password" value="testpass123">
+    <br>
+    <button onclick="testLogin()">Login</button>
+    <div id="loginResult" class="result" style="display:none;"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>3. Verify Token</h2>
+    <button onclick="testVerify()">Verify Current Token</button>
+    <div id="verifyResult" class="result" style="display:none;"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>4. Get Profile</h2>
+    <button onclick="testGetProfile()">Get Profile</button>
+    <div id="profileResult" class="result" style="display:none;"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>5. Update Profile</h2>
+    <input type="text" id="updateName" placeholder="Full Name" value="Updated Test User">
+    <input type="tel" id="updatePhone" placeholder="Phone" value="+1234567890">
+    <br>
+    <button onclick="testUpdateProfile()">Update Profile</button>
+    <div id="updateResult" class="result" style="display:none;"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>Current Token</h2>
+    <div id="currentToken" style="word-break: break-all; color: #666;">No token set</div>
+    <button onclick="clearToken()">Clear Token</button>
+  </div>
+
+  <script>
+    const API_BASE = 'https://api.pawatasty.com/api';
+    let currentToken = localStorage.getItem('api_token');
+
+    updateTokenDisplay();
+
+    function updateTokenDisplay() {
+      currentToken = localStorage.getItem('api_token');
+      document.getElementById('currentToken').textContent = currentToken || 'No token set';
+    }
+
+    function clearToken() {
+      localStorage.removeItem('api_token');
+      currentToken = null;
+      updateTokenDisplay();
+      alert('Token cleared');
+    }
+
+    async function makeRequest(endpoint, method = 'GET', body = null, useAuth = false) {
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+
+      if (useAuth && currentToken) {
+        headers['Authorization'] = `Bearer ${currentToken}`;
+      }
+
+      const options = {
+        method,
+        headers,
+      };
+
+      if (body) {
+        options.body = JSON.stringify(body);
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}${endpoint}`, options);
+        const data = await response.json();
+
+        return {
+          status: response.status,
+          ok: response.ok,
+          data
+        };
+      } catch (error) {
+        return {
+          status: 0,
+          ok: false,
+          error: error.message
+        };
+      }
+    }
+
+    function displayResult(elementId, result) {
+      const element = document.getElementById(elementId);
+      element.style.display = 'block';
+
+      const statusClass = result.ok ? 'success' : 'error';
+      const statusText = result.ok ? 'SUCCESS' : 'ERROR';
+
+      element.className = `result ${statusClass}`;
+      element.innerHTML = `
+        <span class="status ${statusClass}">${statusText}</span>
+        <strong>Status:</strong> ${result.status}
+        <br><br>
+        <strong>Response:</strong>
+        <br>
+        ${JSON.stringify(result.data || result.error, null, 2)}
+      `;
+    }
+
+    async function testRegister() {
+      const email = document.getElementById('regEmail').value;
+      const password = document.getElementById('regPassword').value;
+      const fullName = document.getElementById('regName').value;
+
+      const result = await makeRequest('/mobile/auth/register', 'POST', {
+        email,
+        password,
+        fullName: fullName || undefined
+      });
+
+      if (result.ok && result.data.token) {
+        currentToken = result.data.token;
+        localStorage.setItem('api_token', currentToken);
+        updateTokenDisplay();
+      }
+
+      displayResult('regResult', result);
+    }
+
+    async function testLogin() {
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+
+      const result = await makeRequest('/auth/login', 'POST', {
+        email,
+        password
+      });
+
+      if (result.ok && result.data.token) {
+        currentToken = result.data.token;
+        localStorage.setItem('api_token', currentToken);
+        updateTokenDisplay();
+      }
+
+      displayResult('loginResult', result);
+    }
+
+    async function testVerify() {
+      if (!currentToken) {
+        alert('Please login first to get a token');
+        return;
+      }
+
+      const result = await makeRequest('/auth/verify', 'GET', null, true);
+      displayResult('verifyResult', result);
+    }
+
+    async function testGetProfile() {
+      if (!currentToken) {
+        alert('Please login first to get a token');
+        return;
+      }
+
+      const result = await makeRequest('/profile', 'GET', null, true);
+      displayResult('profileResult', result);
+    }
+
+    async function testUpdateProfile() {
+      if (!currentToken) {
+        alert('Please login first to get a token');
+        return;
+      }
+
+      const fullName = document.getElementById('updateName').value;
+      const phone = document.getElementById('updatePhone').value;
+
+      const result = await makeRequest('/profile', 'PUT', {
+        fullName,
+        phone
+      }, true);
+
+      displayResult('updateResult', result);
+    }
+  </script>
+</body>
+</html>

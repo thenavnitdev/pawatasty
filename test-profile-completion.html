@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile Completion Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f3f4f6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #1f2937;
+            margin-bottom: 10px;
+        }
+
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .section h2 {
+            color: #374151;
+            font-size: 18px;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        button {
+            background: #334155;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-right: 8px;
+            margin-bottom: 8px;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #1e293b;
+        }
+
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .input-group {
+            margin-bottom: 12px;
+        }
+
+        .input-group label {
+            display: block;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .status {
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-weight: 500;
+        }
+
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status.info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .log {
+            background: #1f2937;
+            color: #f3f4f6;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 12px;
+        }
+
+        .log-entry {
+            margin-bottom: 4px;
+            padding: 4px;
+        }
+
+        .log-entry.error {
+            color: #fca5a5;
+        }
+
+        .log-entry.success {
+            color: #86efac;
+        }
+
+        .log-entry.info {
+            color: #93c5fd;
+        }
+
+        pre {
+            background: #f9fafb;
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Profile Completion Bug Fix Test</h1>
+        <p style="color: #6b7280; margin-bottom: 30px;">Test that profile_completed flag is properly saved and users don't get stuck in redirect loop</p>
+
+        <div class="section">
+            <h2>Step 1: Login or Create Test User</h2>
+            <div class="input-group">
+                <label>Email:</label>
+                <input type="email" id="email" placeholder="test@example.com">
+            </div>
+            <div class="input-group">
+                <label>Password:</label>
+                <input type="password" id="password" placeholder="password123">
+            </div>
+            <button onclick="login()">Login</button>
+            <button onclick="signup()">Sign Up New User</button>
+            <div id="loginStatus"></div>
+        </div>
+
+        <div class="section">
+            <h2>Step 2: Check Current Profile Status</h2>
+            <button onclick="checkProfile()">Check Profile in Database</button>
+            <div id="profileStatus"></div>
+        </div>
+
+        <div class="section">
+            <h2>Step 3: Complete Profile (Save with profile_completed = true)</h2>
+            <div class="input-group">
+                <label>Full Name:</label>
+                <input type="text" id="fullName" placeholder="John Doe" value="Test User">
+            </div>
+            <div class="input-group">
+                <label>Phone Number:</label>
+                <input type="text" id="phoneNumber" placeholder="+31612345678" value="+31612345678">
+            </div>
+            <button onclick="saveProfile()">Save Profile</button>
+            <div id="saveStatus"></div>
+        </div>
+
+        <div class="section">
+            <h2>Step 4: Verify Profile Saved Correctly</h2>
+            <button onclick="verifyProfile()">Verify Profile</button>
+            <div id="verifyStatus"></div>
+        </div>
+
+        <div class="section">
+            <h2>Step 5: Test Redirect Logic</h2>
+            <button onclick="testRedirectLogic()">Test Should Redirect to Map</button>
+            <div id="redirectStatus"></div>
+        </div>
+
+        <div class="section">
+            <h2>Activity Log</h2>
+            <button onclick="clearLog()">Clear Log</button>
+            <div id="log" class="log"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
+
+        const supabase = createClient(
+            'https://dopjawhuylqipltnuydp.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRvcGphd2h1eWxxaXBsdG51eWRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA2NDA0NTksImV4cCI6MjA3NjIxNjQ1OX0.l_xbP6PPkTsq82CnFQ6caHFWyKf1fwkvYqBmzpp03Co'
+        );
+
+        let currentUser = null;
+
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            const timestamp = new Date().toLocaleTimeString();
+            entry.textContent = `[${timestamp}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        window.clearLog = function() {
+            document.getElementById('log').innerHTML = '';
+        };
+
+        window.login = async function() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const statusDiv = document.getElementById('loginStatus');
+
+            if (!email || !password) {
+                statusDiv.innerHTML = '<div class="status error">Please enter email and password</div>';
+                return;
+            }
+
+            log(`Logging in as ${email}`, 'info');
+
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+                if (error) throw error;
+
+                currentUser = data.user;
+                log(`Login successful! User ID: ${currentUser.id}`, 'success');
+
+                statusDiv.innerHTML = `<div class="status success">✓ Logged in as ${email}<br>User ID: ${currentUser.id}</div>`;
+            } catch (error) {
+                log(`Login failed: ${error.message}`, 'error');
+                statusDiv.innerHTML = `<div class="status error">✗ Login failed: ${error.message}</div>`;
+            }
+        };
+
+        window.signup = async function() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const statusDiv = document.getElementById('loginStatus');
+
+            if (!email || !password) {
+                statusDiv.innerHTML = '<div class="status error">Please enter email and password</div>';
+                return;
+            }
+
+            log(`Creating new user ${email}`, 'info');
+
+            try {
+                const { data, error } = await supabase.auth.signUp({ email, password });
+
+                if (error) throw error;
+
+                currentUser = data.user;
+                log(`Sign up successful! User ID: ${currentUser.id}`, 'success');
+
+                statusDiv.innerHTML = `<div class="status success">✓ User created: ${email}<br>User ID: ${currentUser.id}</div>`;
+            } catch (error) {
+                log(`Sign up failed: ${error.message}`, 'error');
+                statusDiv.innerHTML = `<div class="status error">✗ Sign up failed: ${error.message}</div>`;
+            }
+        };
+
+        window.checkProfile = async function() {
+            const statusDiv = document.getElementById('profileStatus');
+
+            if (!currentUser) {
+                statusDiv.innerHTML = '<div class="status error">Please login first</div>';
+                return;
+            }
+
+            log(`Checking profile for user ${currentUser.id}`, 'info');
+
+            try {
+                const { data, error } = await supabase
+                    .from('users')
+                    .select('user_id, full_name, phone_nr, profile_completed, email')
+                    .eq('user_id', currentUser.id)
+                    .maybeSingle();
+
+                if (error) throw error;
+
+                if (!data) {
+                    log('No profile record found in database', 'info');
+                    statusDiv.innerHTML = `<div class="status info">No profile record exists yet for this user</div>`;
+                } else {
+                    log('Profile found in database', 'success');
+                    statusDiv.innerHTML = `
+                        <div class="status info">
+                            <strong>Current Profile Status:</strong>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                log(`Error checking profile: ${error.message}`, 'error');
+                statusDiv.innerHTML = `<div class="status error">✗ Error: ${error.message}</div>`;
+            }
+        };
+
+        window.saveProfile = async function() {
+            const fullName = document.getElementById('fullName').value;
+            const phoneNumber = document.getElementById('phoneNumber').value;
+            const statusDiv = document.getElementById('saveStatus');
+
+            if (!currentUser) {
+                statusDiv.innerHTML = '<div class="status error">Please login first</div>';
+                return;
+            }
+
+            if (!fullName || !phoneNumber) {
+                statusDiv.innerHTML = '<div class="status error">Please enter name and phone</div>';
+                return;
+            }
+
+            log(`Saving profile for user ${currentUser.id}`, 'info');
+            log(`Name: ${fullName}, Phone: ${phoneNumber}`, 'info');
+
+            try {
+                // Check if record exists
+                const { data: existing } = await supabase
+                    .from('users')
+                    .select('user_id')
+                    .eq('user_id', currentUser.id)
+                    .maybeSingle();
+
+                const userData = {
+                    full_name: fullName,
+                    phone_nr: phoneNumber,
+                    profile_completed: true
+                };
+
+                if (existing) {
+                    log('Updating existing profile record', 'info');
+                    const { error } = await supabase
+                        .from('users')
+                        .update(userData)
+                        .eq('user_id', currentUser.id);
+
+                    if (error) throw error;
+                } else {
+                    log('Creating new profile record', 'info');
+                    const { error } = await supabase
+                        .from('users')
+                        .insert({
+                            user_id: currentUser.id,
+                            email: currentUser.email,
+                            ...userData
+                        });
+
+                    if (error) throw error;
+                }
+
+                log('✓ Profile saved successfully with profile_completed = true', 'success');
+                statusDiv.innerHTML = '<div class="status success">✓ Profile saved successfully!</div>';
+            } catch (error) {
+                log(`Save failed: ${error.message}`, 'error');
+                statusDiv.innerHTML = `<div class="status error">✗ Save failed: ${error.message}</div>`;
+            }
+        };
+
+        window.verifyProfile = async function() {
+            const statusDiv = document.getElementById('verifyStatus');
+
+            if (!currentUser) {
+                statusDiv.innerHTML = '<div class="status error">Please login first</div>';
+                return;
+            }
+
+            log('Verifying profile was saved correctly', 'info');
+
+            try {
+                const { data, error } = await supabase
+                    .from('users')
+                    .select('full_name, phone_nr, profile_completed')
+                    .eq('user_id', currentUser.id)
+                    .maybeSingle();
+
+                if (error) throw error;
+
+                if (!data) {
+                    log('✗ ERROR: No profile data found!', 'error');
+                    statusDiv.innerHTML = '<div class="status error">✗ Profile was not saved!</div>';
+                } else if (!data.full_name) {
+                    log('✗ ERROR: full_name is missing!', 'error');
+                    statusDiv.innerHTML = '<div class="status error">✗ Full name not saved!</div>';
+                } else if (!data.phone_nr) {
+                    log('✗ ERROR: phone_nr is missing!', 'error');
+                    statusDiv.innerHTML = '<div class="status error">✗ Phone number not saved!</div>';
+                } else if (!data.profile_completed) {
+                    log('✗ ERROR: profile_completed is false!', 'error');
+                    statusDiv.innerHTML = '<div class="status error">✗ profile_completed flag is FALSE! This is the bug!</div>';
+                } else {
+                    log('✓ SUCCESS: All fields saved correctly!', 'success');
+                    statusDiv.innerHTML = `
+                        <div class="status success">
+                            ✓ Profile Complete!<br>
+                            Full Name: ${data.full_name}<br>
+                            Phone: ${data.phone_nr}<br>
+                            Profile Completed: ${data.profile_completed}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                log(`Verification failed: ${error.message}`, 'error');
+                statusDiv.innerHTML = `<div class="status error">✗ Error: ${error.message}</div>`;
+            }
+        };
+
+        window.testRedirectLogic = async function() {
+            const statusDiv = document.getElementById('redirectStatus');
+
+            if (!currentUser) {
+                statusDiv.innerHTML = '<div class="status error">Please login first</div>';
+                return;
+            }
+
+            log('Testing redirect logic (same as App.tsx)', 'info');
+
+            try {
+                const { data, error } = await supabase
+                    .from('users')
+                    .select('full_name, phone_nr, profile_completed')
+                    .eq('user_id', currentUser.id)
+                    .maybeSingle();
+
+                log(`Query result: ${JSON.stringify(data)}`, 'info');
+
+                if (error) {
+                    log(`✗ Query error: ${error.message}`, 'error');
+                    statusDiv.innerHTML = '<div class="status error">✗ Query error - would redirect to Profile Completion</div>';
+                } else if (!data) {
+                    log('✗ No data found - would redirect to Profile Completion', 'info');
+                    statusDiv.innerHTML = '<div class="status error">✗ No profile data - would redirect to Profile Completion</div>';
+                } else if (!data.full_name) {
+                    log('✗ Missing full_name - would redirect to Profile Completion', 'info');
+                    statusDiv.innerHTML = '<div class="status error">✗ Missing full_name - would redirect to Profile Completion</div>';
+                } else if (!data.phone_nr) {
+                    log('✗ Missing phone_nr - would redirect to Profile Completion', 'info');
+                    statusDiv.innerHTML = '<div class="status error">✗ Missing phone_nr - would redirect to Profile Completion</div>';
+                } else if (!data.profile_completed) {
+                    log('✗ profile_completed is false - would redirect to Profile Completion', 'info');
+                    statusDiv.innerHTML = '<div class="status error">✗ profile_completed is FALSE - would redirect to Profile Completion</div>';
+                } else {
+                    log('✓ SUCCESS: Profile complete - would redirect to MAP!', 'success');
+                    statusDiv.innerHTML = '<div class="status success">✓ SUCCESS! Would redirect to Map View (profile is complete)</div>';
+                }
+            } catch (error) {
+                log(`Test failed: ${error.message}`, 'error');
+                statusDiv.innerHTML = `<div class="status error">✗ Test error: ${error.message}</div>`;
+            }
+        };
+
+        log('Test page ready', 'info');
+    </script>
+</body>
+</html>

@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Payment Flow</title>
+  <script src="https://js.stripe.com/v3/"></script>
+  <style>
+    body { font-family: system-ui; padding: 20px; max-width: 600px; margin: 0 auto; }
+    button { padding: 12px 24px; margin: 10px 5px; cursor: pointer; font-size: 16px; }
+    .success { background: #10b981; color: white; }
+    .error { background: #ef4444; color: white; }
+    .primary { background: #f97316; color: white; }
+    pre { background: #f3f4f6; padding: 15px; border-radius: 8px; overflow-x: auto; font-size: 12px; }
+    .log { margin: 10px 0; padding: 8px; border-left: 3px solid #3b82f6; background: #eff6ff; }
+    #stripeForm { margin: 20px 0; padding: 20px; border: 2px solid #f97316; border-radius: 8px; display: none; }
+  </style>
+</head>
+<body>
+  <h1>🧪 Payment Flow Test</h1>
+
+  <div>
+    <h2>Step 1: Check Environment</h2>
+    <button onclick="checkEnv()" class="primary">Check Environment Variables</button>
+    <div id="envResult"></div>
+  </div>
+
+  <div>
+    <h2>Step 2: Initialize Payment</h2>
+    <button onclick="initPayment('card')" class="primary">Initialize Card Payment</button>
+    <button onclick="initPayment('ideal')" class="primary">Initialize iDEAL Payment</button>
+    <div id="initResult"></div>
+  </div>
+
+  <div id="stripeForm">
+    <h2>Step 3: Complete Payment</h2>
+    <div id="payment-element"></div>
+    <button onclick="submitPayment()" class="success">Pay Now</button>
+    <div id="paymentResult"></div>
+  </div>
+
+  <div>
+    <h2>Console Logs</h2>
+    <div id="logs"></div>
+  </div>
+
+  <script type="module">
+    const SUPABASE_URL = 'https://dopjawhuylqipltnuydp.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRvcGphd2h1eWxxaXBsdG51eWRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA2NDA0NTksImV4cCI6MjA3NjIxNjQ1OX0.l_xbP6PPkTsq82CnFQ6caHFWyKf1fwkvYqBmzpp03Co';
+    const STRIPE_KEY = 'pk_test_51M2D1ECcTUIOQ9MlHx82jO3oGqleOMKvBub1sYxHYTODiKzxwwAWb3hUiqgvHXCf92WXbklGIYgjLtpvh5DiQ9ll00eCtUxgsy';
+
+    let stripe = null;
+    let elements = null;
+    let clientSecret = null;
+    let paymentIntentId = null;
+
+    function log(message, type = 'info') {
+      const logDiv = document.getElementById('logs');
+      const entry = document.createElement('div');
+      entry.className = 'log';
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      logDiv.insertBefore(entry, logDiv.firstChild);
+      console.log(message);
+    }
+
+    window.checkEnv = function() {
+      log('✅ SUPABASE_URL: ' + SUPABASE_URL);
+      log('✅ SUPABASE_ANON_KEY: ' + SUPABASE_ANON_KEY.substring(0, 20) + '...');
+      log('✅ STRIPE_KEY: ' + STRIPE_KEY.substring(0, 20) + '...');
+
+      // Initialize Stripe
+      stripe = Stripe(STRIPE_KEY);
+      log('✅ Stripe initialized');
+
+      document.getElementById('envResult').innerHTML = '<pre>✅ All environment variables configured</pre>';
+    }
+
+    window.initPayment = async function(paymentMethod) {
+      log(`🚀 Initializing ${paymentMethod} payment...`);
+
+      if (!stripe) {
+        alert('Please check environment first!');
+        return;
+      }
+
+      try {
+        // Get session token (you need to be logged in)
+        log('🔐 Checking authentication...');
+
+        // For testing, use a hardcoded token or prompt user
+        const token = prompt('Enter your Supabase session token (get from browser console: supabase.auth.getSession())');
+
+        if (!token) {
+          log('❌ No token provided');
+          return;
+        }
+
+        log('📡 Calling edge function to create payment intent...');
+
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/subscription-payment/create-intent`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'apikey': SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({
+            amount: 14400, // €144
+            planName: 'Gold',
+            billingFrequency: 'annually',
+            paymentMethod: paymentMethod,
+          }),
+        });
+
+        log(`📥 Response status: ${response.status}`);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          log(`❌ Error: ${errorText}`);
+          document.getElementById('initResult').innerHTML = `<pre class="error">Error: ${errorText}</pre>`;
+          return;
+        }
+
+        const data = await response.json();
+        clientSecret = data.clientSecret;
+        paymentIntentId = data.paymentIntentId;
+
+        log(`✅ Payment Intent created: ${paymentIntentId}`);
+        log(`✅ Client secret received: ${clientSecret.substring(0, 20)}...`);
+
+        // Show Stripe form
+        document.getElementById('stripeForm').style.display = 'block';
+
+        // Initialize Stripe Elements
+        elements = stripe.elements({
+          clientSecret: clientSecret,
+        });
+
+        const paymentElement = elements.create('payment');
+        paymentElement.mount('#payment-element');
+
+        log('✅ Stripe Elements mounted');
+        document.getElementById('initResult').innerHTML = '<pre class="success">✅ Payment initialized! Fill out the form below.</pre>';
+
+      } catch (error) {
+        log(`❌ Error: ${error.message}`);
+        document.getElementById('initResult').innerHTML = `<pre class="error">Error: ${error.message}</pre>`;
+      }
+    }
+
+    window.submitPayment = async function() {
+      log('💳 Submitting payment...');
+
+      try {
+        log('📤 Submitting elements...');
+        const { error: submitError } = await elements.submit();
+        if (submitError) {
+          log(`❌ Submit error: ${submitError.message}`);
+          document.getElementById('paymentResult').innerHTML = `<pre class="error">Error: ${submitError.message}</pre>`;
+          return;
+        }
+        log('✅ Elements submitted');
+
+        log('💳 Confirming payment with Stripe...');
+        const { error, paymentIntent } = await stripe.confirmPayment({
+          elements,
+          confirmParams: {
+            return_url: window.location.href,
+          },
+          redirect: 'if_required',
+        });
+
+        if (error) {
+          log(`❌ Payment error: ${error.message}`);
+          document.getElementById('paymentResult').innerHTML = `<pre class="error">Error: ${error.message}</pre>`;
+          return;
+        }
+
+        log(`✅ Payment confirmed! Status: ${paymentIntent.status}`);
+        log(`Payment ID: ${paymentIntent.id}`);
+        log(`Payment Method: ${paymentIntent.payment_method}`);
+
+        if (paymentIntent.status === 'succeeded') {
+          log('🎉 Payment succeeded!');
+          document.getElementById('paymentResult').innerHTML = '<pre class="success">✅ Payment successful!</pre>';
+
+          // Note: You'd normally call the /confirm endpoint here to update membership
+          log('ℹ️ In production, this would call /confirm endpoint to update membership');
+        } else {
+          log(`⚠️ Payment incomplete: ${paymentIntent.status}`);
+          document.getElementById('paymentResult').innerHTML = `<pre class="error">Payment status: ${paymentIntent.status}</pre>`;
+        }
+
+      } catch (error) {
+        log(`❌ Error: ${error.message}`);
+        document.getElementById('paymentResult').innerHTML = `<pre class="error">Error: ${error.message}</pre>`;
+      }
+    }
+
+    // Auto-check environment on load
+    setTimeout(() => {
+      log('🎬 Test page loaded');
+      log('👉 Click "Check Environment" to start');
+    }, 100);
+  </script>
+</body>
+</html>

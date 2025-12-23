@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Dining & Charging Modal</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      padding: 20px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .section {
+      background: #f5f5f5;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+    }
+    .code {
+      background: #333;
+      color: #0f0;
+      padding: 15px;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+    }
+    .success { color: #22c55e; }
+    .warning { color: #f59e0b; }
+    .error { color: #ef4444; }
+    h2 { margin-top: 0; }
+    button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button:hover { background: #2563eb; }
+    .result {
+      margin-top: 10px;
+      padding: 10px;
+      background: white;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧪 Dining & Charging Modal Test</h1>
+
+  <div class="section">
+    <h2>Test Instructions</h2>
+    <ol>
+      <li>Start the dev server: <code>npm run dev</code></li>
+      <li>Open the app in your browser</li>
+      <li>Click on a merchant with <strong>businessType = "diningandcharging"</strong></li>
+      <li>Examples: "Boétie Rest", "newiono", "Smollen Indonesisch"</li>
+    </ol>
+  </div>
+
+  <div class="section">
+    <h2>✅ Expected Modal Structure</h2>
+    <div class="code">
+┌─────────────────────────────────────────┐
+│  [Header Image with Heart Icon]        │
+└─────────────────────────────────────────┘
+
+<span class="success">Newiono - Amsterdam</span>
+📍 Banstraat 61    <span class="warning">[Closed]</span> 09:00 – 17:00
+Bites / Drinks & Charging
+
+┌─────────────────────────────────────────┐
+│  <span class="success">CHARGING DETAILS BOX (Cyan)</span>        │
+│  ┌───────────────────────┐  ┌────────┐ │
+│  │ 💳 € 1 / 30 Min       │  │[Image]│ │
+│  │ 🔋 7 Power banks      │  │        │ │
+│  │ 🔲 1 Empty return slot│  │        │ │
+│  └───────────────────────┘  └────────┘ │
+└─────────────────────────────────────────┘
+
+┌─────────────────────────────────────────┐
+│  <span class="warning">DINING DETAILS BOX (Orange)</span>         │
+│  <span class="warning">Special Offer</span>                       │
+│  Double the flavors, double the         │
+│  delight — the perfect duo...           │
+└─────────────────────────────────────────┘
+
+┌─────────────────────────────────────────┐
+│           [Book Now Button]             │
+└─────────────────────────────────────────┘
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>🔍 Check Merchant Data</h2>
+    <button onclick="checkMerchants()">Check Dining+Charging Merchants</button>
+    <div id="merchant-result" class="result"></div>
+  </div>
+
+  <div class="section">
+    <h2>📋 Modal Code Location</h2>
+    <p><strong>File:</strong> <code>src/components/MapLocationModal.tsx</code></p>
+    <p><strong>Component:</strong> <code>MapDiningAndChargingModal</code></p>
+    <p><strong>Lines:</strong> 316-467</p>
+  </div>
+
+  <div class="section">
+    <h2>🐛 Troubleshooting</h2>
+    <ul>
+      <li><strong>Modal not showing?</strong> Check browser console for errors</li>
+      <li><strong>Wrong modal showing?</strong> Verify merchant has <code>businessType: "diningandcharging"</code></li>
+      <li><strong>Missing station data?</strong> Check if merchant has <code>bound_station_id</code></li>
+      <li><strong>Clear browser cache:</strong> Ctrl+Shift+R (Windows) or Cmd+Shift+R (Mac)</li>
+    </ul>
+  </div>
+
+  <script>
+    async function checkMerchants() {
+      const resultDiv = document.getElementById('merchant-result');
+      resultDiv.innerHTML = '<p class="warning">⏳ Fetching merchants...</p>';
+
+      try {
+        const response = await fetch('http://localhost:5173');
+        if (!response.ok) {
+          throw new Error('Dev server not running. Please start with: npm run dev');
+        }
+
+        resultDiv.innerHTML = `
+          <p class="success">✅ Dev server is running!</p>
+          <p><strong>Merchants with diningandcharging type:</strong></p>
+          <ul>
+            <li>Boétie Rest (ST725106)</li>
+            <li>newiono (ST224963)</li>
+            <li>Smollen Indonesisch</li>
+            <li>Test Dutch Merchant</li>
+            <li>Teste Bait</li>
+          </ul>
+          <p><strong>Click on any of these merchants on the map to see the modal.</strong></p>
+        `;
+      } catch (error) {
+        resultDiv.innerHTML = `
+          <p class="error">❌ Error: ${error.message}</p>
+          <p>Make sure the dev server is running: <code>npm run dev</code></p>
+        `;
+      }
+    }
+  </script>
+</body>
+</html>
