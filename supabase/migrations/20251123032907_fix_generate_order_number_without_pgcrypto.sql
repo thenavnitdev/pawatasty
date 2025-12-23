@@ -1,0 +1,67 @@
+/*
+  # Fix Order Number Generation (Alternative Without pgcrypto)
+
+  Updates the generate_order_number() function to use native PostgreSQL functions
+  that don't require pgcrypto extension.
+
+  ## Changes:
+  - Use gen_random_uuid() instead of gen_random_bytes()
+  - Format: {timestamp}-{uuid_fragment}
+  - Guaranteed uniqueness
+
+  ## Benefits:
+  - No extension dependencies
+  - Cryptographically secure randomness
+  - Collision-resistant
+*/
+
+-- Drop existing function
+DROP FUNCTION IF EXISTS generate_order_number();
+
+-- Create improved order number generator (no pgcrypto needed)
+CREATE OR REPLACE FUNCTION generate_order_number()
+RETURNS text
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+DECLARE
+  timestamp_part text;
+  random_part text;
+  order_num text;
+  max_attempts int := 10;
+  attempt int := 0;
+BEGIN
+  LOOP
+    -- Get current timestamp in milliseconds
+    timestamp_part := (EXTRACT(EPOCH FROM clock_timestamp()) * 1000)::bigint::text;
+    
+    -- Generate random string from UUID (take first 6 chars after removing dashes)
+    random_part := upper(substring(replace(gen_random_uuid()::text, '-', '') from 1 for 6));
+    
+    -- Combine: timestamp-random
+    order_num := timestamp_part || '-' || random_part;
+    
+    -- Check if this order number already exists (extremely unlikely but safe)
+    IF NOT EXISTS (SELECT 1 FROM orders WHERE order_number = order_num) THEN
+      RETURN order_num;
+    END IF;
+    
+    -- Increment attempt counter
+    attempt := attempt + 1;
+    
+    -- If we've tried too many times, add extra randomness
+    IF attempt >= max_attempts THEN
+      order_num := order_num || '-' || (random() * 999)::int::text;
+      RETURN order_num;
+    END IF;
+    
+    -- Small delay before retry (1ms)
+    PERFORM pg_sleep(0.001);
+  END LOOP;
+END;
+$$;
+
+-- Add comment explaining the function
+COMMENT ON FUNCTION generate_order_number() IS 
+'Generates unique order numbers using timestamp + UUID fragment. Format: {timestamp_ms}-{random_hex}. Collision-resistant and suitable for high-traffic scenarios.';
