@@ -78,10 +78,17 @@ export default function Login({ onLogin, onOTPRequired }: LoginProps) {
     setError(null);
     try {
       const isMobileApp = typeof (window as any).ReactNativeWebView !== 'undefined';
-      const redirectUrl = isMobileApp ? 'pawatasty://auth/callback' : window.location.origin;
+      // Use explicit localhost for development, fallback to origin
+      const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const redirectUrl = isMobileApp 
+        ? 'pawatasty://auth/callback' 
+        : isDevelopment 
+          ? `http://localhost:${window.location.port || '5173'}`
+          : window.location.origin;
 
       console.log('🔑 Starting Google OAuth...');
       console.log('  - Mobile app:', isMobileApp);
+      console.log('  - Is development:', isDevelopment);
       console.log('  - Redirect URL:', redirectUrl);
       console.log('  - Current URL:', window.location.href);
 
@@ -125,10 +132,17 @@ export default function Login({ onLogin, onOTPRequired }: LoginProps) {
     setError(null);
     try {
       const isMobileApp = typeof (window as any).ReactNativeWebView !== 'undefined';
-      const redirectUrl = isMobileApp ? 'pawatasty://auth/callback' : window.location.origin;
+      // Use explicit localhost for development, fallback to origin
+      const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const redirectUrl = isMobileApp 
+        ? 'pawatasty://auth/callback' 
+        : isDevelopment 
+          ? `http://localhost:${window.location.port || '5173'}`
+          : window.location.origin;
 
       console.log('🔑 Starting Facebook OAuth...');
       console.log('  - Mobile app:', isMobileApp);
+      console.log('  - Is development:', isDevelopment);
       console.log('  - Redirect URL:', redirectUrl);
 
       console.log('🔍 Detecting Facebook app installation...');
@@ -260,7 +274,7 @@ export default function Login({ onLogin, onOTPRequired }: LoginProps) {
       <div className="w-full max-w-md px-5 pb-[20px] -mt-12">
         <div className="text-center mb-6">
           <div className="text-6xl mb-4">👋</div>
-          <h1 className="text-4xl font-bold text-orange-400 mb-2">Hi welcome</h1>
+          <h1 className="text-4xl font-bold text-orange-400 mb-2">Hi welcome Gaurav</h1>
           <p className="text-gray-600">Join Pawa with your account</p>
         </div>
 
