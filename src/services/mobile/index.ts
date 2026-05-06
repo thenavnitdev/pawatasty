@@ -13,6 +13,7 @@ export * from './paymentMethods';
 export * from './reviews';
 export { likedMerchantsAPI } from './likedMerchants';
 export { apiClient } from './client';
+export { deviceAPI } from './device';
 export { promoContentAPI } from './promoContent';
 export { connectionInvitesAPI } from './connectionInvites';
 
