@@ -1,0 +1,18 @@
+# Minimal stack so the bridge server can connect to RabbitMQ.
+# Install Docker Desktop (Mac) or Docker Engine (Linux), then from this folder:
+#   docker compose -f docker-compose-base.yml up -d
+#
+# For full IoT (eject power bank), you also need the manufacturer's PowerServer
+# on port 6888 — they usually give you a second compose file (e.g. docker-compose-powerserver.yml).
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.11-management
+    container_name: rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"   # AMQP — bridge connects here
+      - "15672:15672" # Web UI — http://localhost:15672  (guest / guest)
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
