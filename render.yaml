@@ -1,0 +1,13 @@
+# Deploy powerbank-bridge on Render: New → Blueprint → connect this repo.
+# Do NOT use Vercel for this API (Express + RabbitMQ needs a long-running server).
+services:
+  - type: web
+    name: powerbank-bridge
+    runtime: node
+    rootDir: powerbank-bridge
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
