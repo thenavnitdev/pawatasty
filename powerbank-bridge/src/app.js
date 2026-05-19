@@ -8,6 +8,15 @@ const app = express();
 
 app.use(express.json());
 
+app.get('/', (_req, res) => {
+  res.json({
+    name: 'powerbank-bridge',
+    status: 'ok',
+    health: '/health',
+    api: ['/api/rent', '/api/device', '/api/cabinet'],
+  });
+});
+
 app.get('/health', (_req, res) => {
   res.json({ success: true, status: 'ok', ts: Date.now() });
 });

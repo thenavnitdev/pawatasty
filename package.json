@@ -10,6 +10,9 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.app.json"
   },
+  "engines": {
+    "node": "20.x"
+  },
   "dependencies": {
     "@stripe/react-stripe-js": "^5.4.0",
     "@stripe/stripe-js": "^8.5.2",

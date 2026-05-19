@@ -9,7 +9,7 @@
     "build": "node -e \"console.log('powerbank-bridge: no compile step')\""
   },
   "engines": {
-    "node": ">=20"
+    "node": "20.x"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.38.4",
